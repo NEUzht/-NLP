@@ -36,13 +36,11 @@ def make_batch(train_path, word2number_dict, batch_size, n_step):
             input_batch.append(input)
             target_batch.append(target)
 
-
             if len(input_batch) == batch_size:
                 all_input_batch.append(input_batch)
                 all_target_batch.append(target_batch)
                 input_batch = []
                 target_batch = []
-
 
     return all_input_batch, all_target_batch  # (batch num, batch size, n_step) (batch num, batch size)
 
@@ -74,6 +72,7 @@ def make_dict(train_path):
     # exit(0)
     return word2number_dict, number2word_dict
 
+
 class TextLSTM(nn.Module):
     def __init__(self):
         super(TextLSTM, self).__init__()
@@ -95,16 +94,13 @@ class TextLSTM(nn.Module):
         self.W_hc = nn.Linear(n_hidden, n_hidden, bias=False)
         self.b_c = nn.Parameter(torch.ones([n_hidden]))
 
-        self.W_hq =nn.Linear(n_hidden, n_class, bias=False)
+        self.W_hq = nn.Linear(n_hidden, n_class, bias=False)
         self.b_q = nn.Parameter(torch.ones([n_class]))
 
     def forward(self, X, H, C):
-
         X = self.E(X)
         X = X.transpose(0, 1)
-
         for x_t in X:
-
             a = self.W_hi(H)
             I = torch.sigmoid(self.W_xi(x_t) + self.W_hi(H) + self.b_i)
             F = torch.sigmoid(self.W_xf(x_t) + self.W_hf(H) + self.b_f)
@@ -115,6 +111,70 @@ class TextLSTM(nn.Module):
 
         model = self.W_hq(H) + self.b_q
         return model
+
+
+class TextLSTM1(nn.Module):
+    def __init__(self):
+        super(TextLSTM1, self).__init__()
+        self.E = nn.Embedding(n_class, embedding_dim=emb_size)
+
+        self.W_xi = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hi = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_i = nn.Parameter(torch.ones([n_hidden]))
+        self.W_xi1 = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hi1 = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_i1 = nn.Parameter(torch.ones([n_hidden]))
+
+        self.W_xf = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hf = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_f = nn.Parameter(torch.ones([n_hidden]))
+        self.W_xf1 = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hf1 = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_f1 = nn.Parameter(torch.ones([n_hidden]))
+
+        self.W_xo = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_ho = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_o = nn.Parameter(torch.ones([n_hidden]))
+        self.W_xo1 = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_ho1 = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_o1 = nn.Parameter(torch.ones([n_hidden]))
+
+        self.W_xc = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hc = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_c = nn.Parameter(torch.ones([n_hidden]))
+        self.W_xc1 = nn.Linear(emb_size, n_hidden, bias=False)
+        self.W_hc1 = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_c1 = nn.Parameter(torch.ones([n_hidden]))
+
+        self.W_xh = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.W_hh = nn.Linear(n_hidden, n_hidden, bias=False)
+        self.b_h = nn.Parameter(torch.ones([n_hidden]))
+
+        self.W_hq = nn.Linear(n_hidden, n_class, bias=False)
+        self.b_q = nn.Parameter(torch.ones([n_class]))
+
+    def forward(self, X, H, C):
+        X = self.E(X)
+        X = X.transpose(0, 1)
+        H1 = H
+        C1 = C
+        for x_t in X:
+            I = torch.sigmoid(self.W_xi(x_t) + self.W_hi(H) + self.b_i)
+            F = torch.sigmoid(self.W_xf(x_t) + self.W_hf(H) + self.b_f)
+            O = torch.sigmoid(self.W_xo(x_t) + self.W_ho(H) + self.b_o)
+            C_tilda = torch.tanh(self.W_xc(x_t) + self.W_hc(H) + self.b_c)
+            C = F * C + I * C_tilda
+            H = O * torch.tanh(C)
+            H1 = torch.sigmoid(self.W_xh(H) + self.W_hh(H1) + self.b_h)
+            I1 = torch.sigmoid(self.W_xi1(x_t) + self.W_hi1(H1) + self.b_i1)
+            F1 = torch.sigmoid(self.W_xf1(x_t) + self.W_hf1(H1) + self.b_f1)
+            O1 = torch.sigmoid(self.W_xo1(x_t) + self.W_ho1(H1) + self.b_o1)
+            C_tilda1 = torch.tanh(self.W_xc1(x_t) + self.W_hc1(H1) + self.b_c1)
+            C1 = F1 * C1 + I1 * C_tilda1
+            H1 = O1 * torch.tanh(C1)
+        model = self.W_hq(H1) + self.b_q
+        return model
+
 
 def train_LSTMlm():
     model = TextLSTM()
@@ -132,8 +192,8 @@ def train_LSTMlm():
             # print(input_batch)
             # exit()
             optimizer.zero_grad()
-            H = torch.zeros(batch_size, n_hidden,device=device)
-            C = torch.zeros(batch_size, n_hidden,device=device)
+            H = torch.zeros(batch_size, n_hidden, device=device)
+            C = torch.zeros(batch_size, n_hidden, device=device)
             # input_batch : [batch_size, n_step, n_class]
             output = model(input_batch, H, C)
 
@@ -161,7 +221,7 @@ def train_LSTMlm():
             total_loss = 0
             count_loss = 0
             for valid_batch, valid_target in zip(all_valid_batch, all_valid_target):
-                valid_output = model(valid_batch,H ,C)
+                valid_output = model(valid_batch, H, C)
                 valid_loss = criterion(valid_output, valid_target)
                 total_loss += valid_loss.item()
                 count_loss += 1
@@ -171,7 +231,6 @@ def train_LSTMlm():
                   'ppl =', '{:.6}'.format(math.exp(total_loss / count_loss)))
 
         if (epoch + 1) % save_checkpoint_epoch == 0:
-
             torch.save(model, f'models/LSTMlm_model_epoch{epoch + 1}.ckpt')
 
 
@@ -191,7 +250,7 @@ def test_LSTMlm(select_model_path):
     H = torch.zeros(batch_size, n_hidden, device=device)
     C = torch.zeros(batch_size, n_hidden, device=device)
     for test_batch, test_target in zip(all_test_batch, all_test_target):
-        test_output = model(test_batch,H ,C)
+        test_output = model(test_batch, H, C)
         test_loss = criterion(test_output, test_target)
         total_loss += test_loss.item()
         count_loss += 1
@@ -204,7 +263,7 @@ def test_LSTMlm(select_model_path):
 if __name__ == '__main__':
     n_step = 5  # number of cells(= number of Step)
     n_hidden = 128  # number of hidden units in one cell
-    batch_size = 128 # batch size
+    batch_size = 128  # batch size
     learn_rate = 0.0005
     all_epoch = 5  # the all epoch for training
     emb_size = 256  # embeding size
